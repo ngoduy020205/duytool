@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Duy Tool Online - Gà Thần Long</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f9; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .login-box { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 15px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 10px; }
+        .tab { padding: 10px 20px; cursor: pointer; background: #eee; }
+        .tab.active { background: #28a745; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f8f9fa; }
+        .online { color: green; font-weight: bold; }
+        .offline { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Duy Tool Web - Check Mail & Friends</h2>
+    
+    <div class="login-box">
+        <input type="text" id="user" placeholder="Tài khoản">
+        <input type="password" id="pass" placeholder="Mật khẩu">
+        <button onclick="startCheck()">BẮT ĐẦU CHECK</button>
+        <span id="status">Sẵn sàng...</span>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('mail')">Hòm Thư</div>
+        <div class="tab" onclick="showTab('friends')">Bạn Bè Online</div>
+    </div>
+
+    <div id="mailView">
+        <table id="mailTable">
+            <thead><tr><th>Vật phẩm</th><th>Số lượng</th><th>Vị trí</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="friendsView" style="display:none;">
+        <table id="friendsTable">
+            <thead><tr><th>Tên nhân vật</th><th>Cấp độ</th><th>Trạng thái</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const PROXY = "https://cors-anywhere.herokuapp.com/"; // Cầu nối vượt lỗi CORS
+
+    async function startCheck() {
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        const status = document.getElementById('status');
+        if(!u || !p) return alert("Nhập đủ TK/MK!");
+
+        status.innerText = "Đang kết nối qua Proxy...";
+        
+        try {
+            // Logic Login và Fetch dữ liệu y hệt bản C#
+            // Lưu ý: Trên web cần Proxy để tránh lỗi CORS từ server game
+            
+            // 1. Gửi request Login (Giả lập cấu trúc bạn đã bắt được)
+            // 2. Tải AllList.xml và giải mã bằng pako.inflate(data)
+            
+            status.innerText = "Đang giải mã Zlib...";
+            
+            // Ví dụ giải mã mảng byte nhận được từ .ashx
+            // const decoded = pako.inflate(responseBuffer); 
+            
+            renderData(); // Hiển thị lên bảng
+            status.innerText = "Hoàn tất!";
+        } catch (e) {
+            status.innerText = "Lỗi kết nối (CORS)!";
+            console.error(e);
+        }
+    }
+
+    function renderData() {
+        // Hàm này sẽ đổ dữ liệu vào Table giống như DataGridView
+    }
+
+    function showTab(type) {
+        document.getElementById('mailView').style.display = type === 'mail' ? 'block' : 'none';
+        document.getElementById('friendsView').style.display = type === 'friends' ? 'block' : 'none';
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.innerText.includes(type === 'mail' ? 'Thư' : 'Bạn')));
+    }
+</script>
+
+</body>
+</html>
