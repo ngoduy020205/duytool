@@ -2,95 +2,137 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Duy Tool Online - Gà Thần Long</title>
+    <title>Duy Tool Online - Check Friends</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f9; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .login-box { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
-        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 8px 15px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 10px; }
-        .tab { padding: 10px 20px; cursor: pointer; background: #eee; }
-        .tab.active { background: #28a745; color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f8f9fa; }
-        .online { color: green; font-weight: bold; }
-        .offline { color: red; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
+        .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; text-align: center; margin-top: 0; }
+        .login-box { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
+        input { padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; width: 150px; }
+        button { padding: 10px 20px; background: #1e88e5; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
+        button:hover { background: #1565c0; }
+        #status { display: block; text-align: center; margin-bottom: 15px; font-weight: bold; color: #546e7a; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
+        th { background: #f5f5f5; color: #455a64; }
+        .online { color: #2e7d32; font-weight: bold; }
+        .offline { color: #c62828; font-weight: bold; }
+        .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Duy Tool Web - Check Mail & Friends</h2>
+    <h2>Duy Tool - Kiểm Tra Bạn Bè Online</h2>
     
     <div class="login-box">
         <input type="text" id="user" placeholder="Tài khoản">
         <input type="password" id="pass" placeholder="Mật khẩu">
-        <button onclick="startCheck()">BẮT ĐẦU CHECK</button>
-        <span id="status">Sẵn sàng...</span>
+        <button onclick="startCheck()">BẮT ĐẦU QUÉT</button>
     </div>
 
-    <div class="tabs">
-        <div class="tab active" onclick="showTab('mail')">Hòm Thư</div>
-        <div class="tab" onclick="showTab('friends')">Bạn Bè Online</div>
-    </div>
+    <div id="status">Nhập tài khoản để bắt đầu...</div>
 
-    <div id="mailView">
-        <table id="mailTable">
-            <thead><tr><th>Vật phẩm</th><th>Số lượng</th><th>Vị trí</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div id="friendsView" style="display:none;">
-        <table id="friendsTable">
-            <thead><tr><th>Tên nhân vật</th><th>Cấp độ</th><th>Trạng thái</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </div>
+    <table id="friendsTable">
+        <thead>
+            <tr>
+                <th>Tên nhân vật</th>
+                <th>Cấp độ</th>
+                <th>Trạng thái</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
 </div>
 
 <script>
-    const PROXY = "https://cors-anywhere.herokuapp.com/"; // Cầu nối vượt lỗi CORS
+    // Duy thay link Worker Cloudflare của Duy vào đây để tool chạy được nhé
+    const PROXY = "https://your-worker-name.workers.dev/?url="; 
 
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
         const status = document.getElementById('status');
-        if(!u || !p) return alert("Nhập đủ TK/MK!");
+        const tbody = document.querySelector('#friendsTable tbody');
 
-        status.innerText = "Đang kết nối qua Proxy...";
-        
+        if(!u || !p) return alert("Vui lòng nhập đủ tài khoản và mật khẩu!");
+
         try {
-            // Logic Login và Fetch dữ liệu y hệt bản C#
-            // Lưu ý: Trên web cần Proxy để tránh lỗi CORS từ server game
+            tbody.innerHTML = "";
+            status.innerText = "🚀 Đang đăng nhập hệ thống...";
             
-            // 1. Gửi request Login (Giả lập cấu trúc bạn đã bắt được)
-            // 2. Tải AllList.xml và giải mã bằng pako.inflate(data)
+            // 1. MD5 Pass giống C#
+            const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
+
+            // 2. Lấy RealID
+            const loginUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/req/LoginSelectList.ashx?username=${u}`)}`;
+            const loginRes = await fetch(loginUrl).then(r => r.text());
+            const realIDMatch = loginRes.match(/ID="(\d+)"/);
+            if(!realIDMatch) throw new Error("Sai tài khoản hoặc không tìm thấy nhân vật!");
+            const realID = realIDMatch[1];
+
+            // 3. Lấy Session Key
+            status.innerText = "🔑 Đang lấy Session Key...";
+            const keyUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/play/LoginGame.aspx`)}`;
+            const keyPage = await fetch(keyUrl).then(r => r.text());
+            const keyMatch = keyPage.match(/key=([a-f0-9\-]{36})/);
+            const key = keyMatch ? keyMatch[1] : "";
+
+            // 4. Tải danh sách bạn bè (Zlib binary)
+            status.innerText = "📡 Đang tải danh sách bạn bè...";
+            const friendsUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/req/imlistload.ashx?id=${realID}&uname=${u}&selfid=${realID}&key=${key}&rnd=${Math.random()}`)}`;
             
-            status.innerText = "Đang giải mã Zlib...";
-            
-            // Ví dụ giải mã mảng byte nhận được từ .ashx
-            // const decoded = pako.inflate(responseBuffer); 
-            
-            renderData(); // Hiển thị lên bảng
-            status.innerText = "Hoàn tất!";
+            const response = await fetch(friendsUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            // 5. Giải mã Zlib (pako) giống logic Decompress trong C#
+            status.innerText = "📂 Đang giải mã dữ liệu...";
+            let decodedXml;
+            try {
+                // Tìm vị trí byte 0x78 giống C# của Duy
+                const idx = uint8Array.indexOf(0x78);
+                const dataToDecompress = idx >= 0 ? uint8Array.slice(idx) : uint8Array;
+                decodedXml = pako.inflate(dataToDecompress, { to: 'string' });
+            } catch (e) {
+                // Nếu không nén thì đọc text trực tiếp
+                decodedXml = new TextDecoder().decode(uint8Array);
+            }
+
+            // 6. Phân tích XML và hiển thị
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
+            const items = xmlDoc.getElementsByTagName("Item");
+
+            if(items.length === 0) {
+                status.innerText = "📭 Danh sách bạn bè trống.";
+                return;
+            }
+
+            for (let item of items) {
+                const nick = item.getAttribute("NickName");
+                const grade = item.getAttribute("Grade");
+                const state = item.getAttribute("State"); // 1 = On, 0 = Off
+
+                const row = `<tr>
+                    <td>${nick}</td>
+                    <td><span class="grade-badge">Lv.${grade}</span></td>
+                    <td class="${state == "1" ? "online" : "offline"}">${state == "1" ? "ONLINE" : "OFFLINE"}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            }
+
+            status.innerText = `✅ Đã quét xong ${items.length} người bạn!`;
+            status.style.color = "green";
+
         } catch (e) {
-            status.innerText = "Lỗi kết nối (CORS)!";
+            status.innerText = "❌ Lỗi: " + e.message;
+            status.style.color = "red";
             console.error(e);
         }
-    }
-
-    function renderData() {
-        // Hàm này sẽ đổ dữ liệu vào Table giống như DataGridView
-    }
-
-    function showTab(type) {
-        document.getElementById('mailView').style.display = type === 'mail' ? 'block' : 'none';
-        document.getElementById('friendsView').style.display = type === 'friends' ? 'block' : 'none';
-        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.innerText.includes(type === 'mail' ? 'Thư' : 'Bạn')));
     }
 </script>
 
