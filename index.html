@@ -121,7 +121,7 @@
         }
     }
 
-    // 2. Render Avatar Html
+  // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
@@ -129,14 +129,14 @@
 
         const sexChar = isMale == "true" ? "m" : "f";
         const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
-        const armBaseUrl = "https://res.gakiemhiep.top/image/arm";
         
         const styleIds = styleStr.split(','); 
         let layers = [];
         
-        // Body mặc định
+        // 1. Thêm Body mặc định (lớp dưới cùng)
         layers.push(`${equipBaseUrl}/${sexChar}/body/default/show.png`);
 
+        // 2. Lọc các layer trang bị
         for (let id of styleIds) {
             const cleanId = id.split('|')[0];
             if (!cleanId || cleanId === "") continue;
@@ -151,29 +151,24 @@
             else if (pic.startsWith("glass")) folder = "glass";
             else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
-            else if (pic.startsWith("arm") || !isNaN(pic)) folder = "arm"; 
             else if (pic.startsWith("wing")) folder = "wing";
-            else folder = "default";
+            // Bỏ qua vũ khí (arm) và các vật phẩm không hiển thị trên avatar web
+            else continue; 
             
-            if (folder === "face" || folder === "eff" || folder === "glass") {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/icon_1.png`);
-            } 
-            else if (folder === "hair") {
+            // 3. Đưa lại toàn bộ về show.png. Khung CSS sẽ tự động crop frame đầu tiên.
+            if (folder === "hair") {
                 layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
             } 
             else if (folder === "cloth") {
                 layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`); 
                 layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); 
             } 
-            else if (folder === "arm") {
-                let armPic = pic.startsWith('s') ? pic : `s${pic}`;
-                layers.push(`${armBaseUrl}/${armPic}/1/0/show.png`);
-            } 
             else {
                 layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
             }
         }
 
+        // 4. Render các layer
         let imgTags = layers.map(url => {
             const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
             return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
