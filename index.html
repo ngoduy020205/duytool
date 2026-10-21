@@ -23,10 +23,10 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-  /* Mở rộng khung chứa bằng đúng kích thước chuẩn của nhân vật */
+ /* Box chứa Avatar được mở rộng cho cân đối */
         .avatar-container {
-            width: 120px;
-            height: 175px; /* Tăng chiều cao lên 175px */
+            width: 140px;
+            height: 140px;
             position: relative;
             margin: auto;
             background: #f0f0f0;
@@ -35,15 +35,17 @@
             border: 1px solid #ccc;
         }
         
-        /* Hiển thị nguyên bản, không thu phóng */
+        /* Mở rộng khung lấy ảnh và thu nhỏ tỷ lệ hiển thị */
         .avatar-layer {
             position: absolute;
-            top: 0; 
-            left: 0;
-            width: 120px; 
-            height: 175px; 
+            top: -10px;  /* Căn chỉnh lên xuống */
+            left: -30px; /* Kéo ảnh sang trái để triệt tiêu khoảng trống thừa và căn giữa */
+            width: 250px; /* Mở rộng tối đa khung cắt để không bao giờ bị đứt mặt/tóc */
+            height: 250px;
             background-position: left top;
             background-repeat: no-repeat;
+            transform-origin: top left;
+            transform: scale(0.65); /* Thu nhỏ toàn bộ nhân vật lại 65% cho vừa khung tròn */
             image-rendering: pixelated; 
         }
     </style>
