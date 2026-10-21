@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Duy Tool Online - Check Friends & Avatar</title>
-    <!-- Thư viện giải nén Zlib và mã hóa MD5 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* Định nghĩa biến CSS mặc định */
+        /* Biến CSS mặc định */
         :root {
-            --ava-scale: 0.75;  
-            --ava-x: 0px;       
-            --ava-y: -15px;
-            /* Biến dành riêng để kéo Mắt và Mặt vào giữa đầu */
-            --face-x: 35px;
-            --face-y: 45px;
+            --ava-scale: 0.85;  
+            --ava-x: -10px;       
+            --ava-y: -5px;     
         }
 
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
@@ -23,14 +19,12 @@
         
         .server-info { text-align: center; font-size: 18px; color: #1565c0; font-weight: bold; margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px; display: none; }
         
-        /* Bảng căn chỉnh Live */
         .control-panel { background: #fff9c4; border: 1px dashed #fbc02d; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .control-panel h4 { margin: 0 0 10px 0; color: #f57f17; text-align: center; }
         .slider-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .slider-group label { font-size: 14px; font-weight: bold; width: 220px; }
+        .slider-group label { font-size: 14px; font-weight: bold; width: 200px; }
         .slider-group input { flex-grow: 1; margin: 0 15px; }
         .slider-group span { width: 40px; text-align: right; font-weight: bold; color: #d32f2f; }
-        hr { border: 0; border-top: 1px solid #fbc02d; margin: 15px 0; }
 
         .login-box { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
         input[type="text"], input[type="password"] { padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; width: 150px; }
@@ -46,10 +40,10 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* 1. Khung hộp giới hạn hiển thị */
+        /* Khung hiển thị ngoài cùng */
         .avatar-container {
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             position: relative;
             margin: auto;
             background: #f5f5f5;
@@ -58,7 +52,7 @@
             border: 1px solid #ccc;
         }
         
-        /* 2. Khung gói các layer để di chuyển và phóng to TOÀN BỘ NHÂN VẬT */
+        /* Wrapper chứa toàn bộ nhân vật để scale/di chuyển mà không làm vỡ layer */
         .avatar-wrapper {
             position: absolute;
             top: 0;
@@ -69,25 +63,13 @@
             transform: translate(var(--ava-x), var(--ava-y)) scale(var(--ava-scale)); 
         }
 
-        /* 3. Layer tiêu chuẩn (Tóc, Áo, Body) - Kích thước đầy đủ 120x175 */
+        /* Tất cả các Layer (bao gồm cả Mắt, Mặt) đều dùng kích thước chuẩn 120x175 */
         .avatar-layer {
             position: absolute;
             top: 0; 
             left: 0;
             width: 120px; 
             height: 175px; 
-            background-position: left top;
-            background-repeat: no-repeat;
-            image-rendering: pixelated; 
-        }
-
-        /* 4. Layer MẮT và MẶT - Ép khung nhỏ (50x50) để CROP đúng 1 khuôn mặt, không bị lặp hình */
-        .avatar-face {
-            position: absolute;
-            width: 50px; 
-            height: 50px; 
-            top: var(--face-y);
-            left: var(--face-x);
             background-position: left top;
             background-repeat: no-repeat;
             image-rendering: pixelated; 
@@ -99,38 +81,22 @@
 <div class="container">
     <h2>Gunny Tool - Check Server & Friends</h2>
     
-    <!-- Bảng điều khiển thanh trượt -->
     <div class="control-panel">
         <h4>🛠 Căn Chỉnh Avatar Trực Tiếp</h4>
-        
         <div class="slider-group">
             <label>🔍 Phóng to / Thu nhỏ:</label>
-            <input type="range" id="sliderScale" min="0.4" max="1.5" step="0.05" value="0.75">
-            <span id="valScale">0.75</span>
+            <input type="range" id="sliderScale" min="0.4" max="1.5" step="0.05" value="0.85">
+            <span id="valScale">0.85</span>
         </div>
         <div class="slider-group">
-            <label>↔️ Kéo Toàn Bộ (Trái / Phải):</label>
-            <input type="range" id="sliderX" min="-80" max="80" step="1" value="0">
-            <span id="valX">0</span>
+            <label>↔️ Trái / Phải (Trục X):</label>
+            <input type="range" id="sliderX" min="-80" max="80" step="1" value="-10">
+            <span id="valX">-10</span>
         </div>
         <div class="slider-group">
-            <label>↕️ Kéo Toàn Bộ (Lên / Xuống):</label>
-            <input type="range" id="sliderY" min="-80" max="80" step="1" value="-15">
-            <span id="valY">-15</span>
-        </div>
-        
-        <hr> <!-- Đường phân cách -->
-
-        <!-- Thanh trượt dành RIÊNG cho Mắt và Mặt -->
-        <div class="slider-group">
-            <label>👀 Kéo Mắt/Mặt (Trái / Phải):</label>
-            <input type="range" id="sliderFaceX" min="0" max="80" step="1" value="35">
-            <span id="valFaceX">35</span>
-        </div>
-        <div class="slider-group">
-            <label>👀 Kéo Mắt/Mặt (Lên / Xuống):</label>
-            <input type="range" id="sliderFaceY" min="0" max="80" step="1" value="45">
-            <span id="valFaceY">45</span>
+            <label>↕️ Lên / Xuống (Trục Y):</label>
+            <input type="range" id="sliderY" min="-80" max="80" step="1" value="-5">
+            <span id="valY">-5</span>
         </div>
     </div>
 
@@ -172,22 +138,10 @@
         document.documentElement.style.setProperty('--ava-y', this.value + 'px');
         document.getElementById('valY').innerText = this.value;
     });
-    
-    // Gắn sự kiện cho thanh trượt Mắt/Mặt
-    document.getElementById('sliderFaceX').addEventListener('input', function() {
-        document.documentElement.style.setProperty('--face-x', this.value + 'px');
-        document.getElementById('valFaceX').innerText = this.value;
-    });
-    document.getElementById('sliderFaceY').addEventListener('input', function() {
-        document.documentElement.style.setProperty('--face-y', this.value + 'px');
-        document.getElementById('valFaceY').innerText = this.value;
-    });
 
-    // --- LOGIC GAME GUNNY ---
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
     let itemTemplateMap = {}; 
 
-    // 1. Tải TemplateAllList
     async function loadTemplateAllList() {
         try {
             document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
@@ -223,7 +177,6 @@
         }
     }
 
-    // 2. Render Avatar 
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
@@ -231,13 +184,12 @@
 
         const sexChar = isMale == "true" ? "m" : "f";
         const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
-        
         const styleIds = styleStr.split(','); 
         let layers = [];
         
-        // Luôn luôn phải có Thân (Body) và Đầu (Head) làm nền
-        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1, isFace: false });
-        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2, isFace: false });
+        // Nền cơ bản (z-index 1 và 2)
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1 });
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2 });
 
         for (let id of styleIds) {
             const cleanId = id.split('|')[0];
@@ -252,37 +204,31 @@
             else if (pic.startsWith("hair")) folder = "hair";
             else if (pic.startsWith("glass")) folder = "glass";
             else if (pic.startsWith("eff")) folder = "eff";
-            else continue; // CHẶN TOÀN BỘ CÁC MÓN ĐỒ RÁC KHÁC (Vũ khí, Cánh...)
+            else continue; 
             
-            // Xếp z-index và đánh dấu isFace = true cho Mắt và Mặt
-            if (folder === "face") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 3, isFace: true });
-            else if (folder === "eff") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 4, isFace: true });
-            else if (folder === "hair") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, zIndex: 6, isFace: false });
-            else if (folder === "glass") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 7, isFace: false });
+            // Đã cập nhật lại Mắt và Mặt, dùng trực tiếp show.png với z-index chuẩn
+            if (folder === "face") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 3 });
+            else if (folder === "eff") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 4 });
             else if (folder === "cloth") {
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5, isFace: false }); // Thân áo
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8, isFace: false }); // Tay áo
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 }); 
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8 }); 
             }
+            else if (folder === "hair") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, zIndex: 6 });
+            else if (folder === "glass") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 7 });
         }
 
-        // Sắp xếp thứ tự layer từ thấp đến cao
         layers.sort((a, b) => a.zIndex - b.zIndex);
 
-        // Tạo thẻ HTML
         let imgTags = layers.map(layer => {
             const proxiedUrl = `${PROXY}${encodeURIComponent(layer.url)}`;
-            // Nếu là Mắt/Mặt thì dùng class avatar-face để crop 50x50, còn lại dùng avatar-layer
-            let className = layer.isFace ? "avatar-face" : "avatar-layer";
-            return `<div class="${className}" style="background-image: url('${proxiedUrl}')"></div>`;
+            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
         }).join('');
 
-        // BỌC CÁC LAYER TRONG AVATAR-WRAPPER
         return `<div class="avatar-container">
                     <div class="avatar-wrapper">${imgTags}</div>
                 </div>`;
     }
 
-    // 3. Tải trạng thái Online Server
     async function checkServerStatus() {
         try {
             const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
@@ -301,7 +247,6 @@
         } catch(e) {}
     }
 
-    // 4. Hàm chạy quét bạn bè
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
