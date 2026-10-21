@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* Định nghĩa biến CSS mặc định cho Avatar (Đã căn chuẩn) */
+        /* Định nghĩa biến CSS mặc định cho Avatar (Đã căn chuẩn giữa khung) */
         :root {
             --ava-scale: 0.75;  
             --ava-x: 0px;       
@@ -42,7 +42,7 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* 1. Khung hộp giới hạn (đóng vai trò như khung tranh) */
+        /* 1. Khung hộp giới hạn hiển thị (Khung xám nhỏ) */
         .avatar-container {
             width: 120px;
             height: 120px;
@@ -54,7 +54,7 @@
             border: 1px solid #ccc;
         }
         
-        /* 2. Khung gói các layer để di chuyển và phóng to nguyên cụm nhân vật */
+        /* 2. Khung gói các layer để di chuyển và phóng to (Chống lỗi đứt ảnh) */
         .avatar-wrapper {
             position: absolute;
             top: 0;
@@ -66,7 +66,7 @@
             transform: translate(var(--ava-x), var(--ava-y)) scale(var(--ava-scale)); 
         }
 
-        /* 3. Từng layer (tóc, áo, mặt) - chỉ làm nhiệm vụ lấy khung chuẩn 120x175 */
+        /* 3. Từng layer chỉ làm đúng 1 việc là crop khung hình đầu tiên (120x175) */
         .avatar-layer {
             position: absolute;
             top: 0; 
@@ -84,7 +84,7 @@
 <div class="container">
     <h2>Gunny Tool - Check Server & Friends</h2>
     
-    <!-- Bảng điều khiển thanh trượt (Đã thiết lập default khớp với CSS) -->
+    <!-- Bảng điều khiển thanh trượt -->
     <div class="control-panel">
         <h4>🛠 Căn Chỉnh Avatar Trực Tiếp</h4>
         
@@ -152,6 +152,7 @@
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
     let itemTemplateMap = {}; 
 
+    // 1. Tải TemplateAllList
     async function loadTemplateAllList() {
         try {
             document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
@@ -187,6 +188,7 @@
         }
     }
 
+    // 2. Render Avatar (Chỉ lấy Tóc, Kính, Áo, Mắt, Mặt)
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
@@ -198,6 +200,7 @@
         const styleIds = styleStr.split(','); 
         let layers = [];
         
+        // Luôn luôn phải có Thân (Body) và Đầu (Head) làm nền
         layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1 });
         layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2 });
 
@@ -213,23 +216,24 @@
             else if (pic.startsWith("face")) folder = "face";
             else if (pic.startsWith("hair")) folder = "hair";
             else if (pic.startsWith("glass")) folder = "glass";
-            else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
-            else continue; 
+            else continue; // LOẠI BỎ arm, wing, suit, head trang bị thêm...
             
+            // Xếp z-index cho từng bộ phận để đè lên nhau chuẩn xác
             if (folder === "face") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 3 });
             else if (folder === "eff") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 4 });
             else if (folder === "hair") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, zIndex: 6 });
             else if (folder === "glass") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 7 });
             else if (folder === "cloth") {
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 }); 
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8 }); 
-            } 
-            else layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 });
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 }); // Thân áo
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8 }); // Tay áo
+            }
         }
 
+        // Sắp xếp thứ tự layer từ thấp đến cao
         layers.sort((a, b) => a.zIndex - b.zIndex);
 
+        // Tạo thẻ HTML
         let imgTags = layers.map(layer => {
             const proxiedUrl = `${PROXY}${encodeURIComponent(layer.url)}`;
             return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
@@ -241,6 +245,7 @@
                 </div>`;
     }
 
+    // 3. Tải trạng thái Online Server
     async function checkServerStatus() {
         try {
             const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
@@ -259,6 +264,7 @@
         } catch(e) {}
     }
 
+    // 4. Hàm chạy quét bạn bè
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
@@ -279,6 +285,7 @@
 
             status.innerText = "🔑 Đang đăng nhập hệ thống...";
             
+            // THAY CODE LOGIN CỦA BẠN VÀO ĐÂY NẾU CẦN
             const realID = "154"; 
             const key = "f0adab566981f1306011b1ebab1d9520";
 
