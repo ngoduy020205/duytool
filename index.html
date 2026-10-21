@@ -121,6 +121,7 @@
     }
 
     // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
+   // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
@@ -167,8 +168,16 @@
             }
         }
 
-        // Tạo chuỗi HTML các ảnh xếp chồng lên nhau
-        let imgTags = layers.map(url => `<img src="${url}" onerror="this.style.display='none'">`).join('');
+        // ==========================================
+        // ĐIỂM SỬA QUAN TRỌNG NHẤT Ở ĐÂY:
+        // Bọc url của ảnh qua con Proxy để bypass Cloudflare
+        // ==========================================
+        let imgTags = layers.map(url => {
+            // Encode url ảnh và ghép vào sau link proxy
+            const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
+            return `<img src="${proxiedUrl}" onerror="this.style.display='none'">`;
+        }).join('');
+
         return `<div class="avatar-container">${imgTags}</div>`;
     }
 
