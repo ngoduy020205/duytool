@@ -22,7 +22,7 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* Box hiển thị Avatar cắt lớp */
+        /* Box chứa Avatar */
         .avatar-container {
             width: 120px;
             height: 120px;
@@ -33,11 +33,18 @@
             overflow: hidden;
             border: 1px solid #ccc;
         }
-        .avatar-container img {
+        
+        /* CSS bắt buộc để hiển thị và crop khung ảnh đầu tiên của nhân vật */
+        .avatar-layer {
             position: absolute;
-            top: -20px; /* Điều chỉnh toạ độ Y để nhân vật vào giữa khung */
-            left: -15px; /* Điều chỉnh toạ độ X */
-            width: 150px; /* Tỉ lệ phóng to ảnh layer */
+            top: -25px; /* Kéo nhân vật lên để lấy phần thân trên */
+            left: 0;
+            width: 120px; /* Chiều rộng chuẩn của 1 frame Gunny */
+            height: 175px; /* Chiều cao chuẩn của 1 frame Gunny */
+            background-position: left top;
+            background-repeat: no-repeat;
+            transform-origin: top center;
+            transform: scale(1.15); /* Phóng to nhẹ cho vừa khung 120x120 */
             image-rendering: pixelated; /* Giữ độ nét của pixel art */
         }
     </style>
@@ -74,13 +81,10 @@
 </div>
 
 <script>
-    // Link Proxy của bạn
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
-
-    // Bộ nhớ đệm chứa mapping (TemplateID -> Pic)
     let itemTemplateMap = {}; 
 
-    // 1. Hàm tải và giải nén TemplateAllList.xml
+    // 1. Tải TemplateAllList.xml
     async function loadTemplateAllList() {
         try {
             document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
@@ -90,7 +94,6 @@
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            // Giải mã Zlib bằng pako
             let decodedXml;
             try {
                 const idx = uint8Array.indexOf(0x78);
@@ -100,12 +103,10 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
-            // Parse XML và lấy mảng Item
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
 
-            // Lưu vào dictionary
             for (let item of items) {
                 const id = item.getAttribute("TemplateID");
                 const pic = item.getAttribute("Pic");
@@ -113,199 +114,4 @@
                     itemTemplateMap[id] = pic;
                 }
             }
-            console.log(`✅ Đã load xong Template: ${Object.keys(itemTemplateMap).length} items`);
-        } catch (e) {
-            console.error("Lỗi tải TemplateAllList: ", e);
-            throw new Error("Không thể tải dữ liệu trang bị của game.");
-        }
-    }
-
-  // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
-    function renderAvatarHtml(styleStr, isMale) {
-        if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
-            return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
-        }
-
-        const sexChar = isMale == "true" ? "m" : "f";
-        const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
-        const armBaseUrl = "https://res.gakiemhiep.top/image/arm";
-        
-        const styleIds = styleStr.split(','); 
-        let layers = [];
-        
-        // Body mặc định (lớp dưới cùng)
-        layers.push(`${equipBaseUrl}/${sexChar}/body/default/show.png`);
-
-        // Duyệt qua từng Item đang mặc
-        for (let id of styleIds) {
-            const cleanId = id.split('|')[0]; // Lấy ID chính
-            if (!cleanId || cleanId === "") continue;
-
-            const pic = itemTemplateMap[cleanId]; 
-            if (!pic) continue; 
-            
-            // Phân loại thư mục
-            let folder = "";
-            if (pic.startsWith("cloth")) folder = "cloth";
-            else if (pic.startsWith("face")) folder = "face";
-            else if (pic.startsWith("hair")) folder = "hair";
-            else if (pic.startsWith("glass")) folder = "glass";
-            else if (pic.startsWith("head")) folder = "head";
-            else if (pic.startsWith("eff")) folder = "eff";
-            else if (pic.startsWith("arm") || !isNaN(pic)) folder = "arm"; // Vũ khí thường là mã số
-            else if (pic.startsWith("wing")) folder = "wing";
-            else folder = "default";
-            
-            // XỬ LÝ ĐƯỜNG DẪN RIÊNG CHO TỪNG BỘ PHẬN
-            if (folder === "face" || folder === "eff" || folder === "glass") {
-                // Dùng icon_1.png cho mặt, biểu cảm, mắt kính để lấy ảnh tĩnh
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/icon_1.png`);
-            } 
-            else if (folder === "hair") {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
-            } 
-            else if (folder === "cloth") {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`); // Lớp thân
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); // Lớp tay áo
-            } 
-            else if (folder === "arm") {
-                // Vũ khí không nằm trong thư mục nam/nữ
-                // Thêm chữ 's' vào trước mã vũ khí nếu chưa có (vd: 12403 -> s12403)
-                let armPic = pic.startsWith('s') ? pic : `s${pic}`;
-                layers.push(`${armBaseUrl}/${armPic}/1/0/show.png`);
-            } 
-            else {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
-            }
-        }
-
-        // Render ra HTML và bọc qua Proxy để vượt Cloudflare
-        let imgTags = layers.map(url => {
-            const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
-            // Vẫn dùng thẻ div background để an toàn crop các frame thừa của tóc/áo (nếu có)
-            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
-        }).join('');
-
-        return `<div class="avatar-container">${imgTags}</div>`;
-    }
-
-    // 3. Hàm tải trạng thái Server
-    async function checkServerStatus() {
-        try {
-            const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
-            const res = await fetch(serverUrl).then(r => r.text());
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(res, "text/xml");
-            const item = xmlDoc.getElementsByTagName("Item")[0];
-            
-            if(item) {
-                const online = item.getAttribute("Online");
-                const sName = item.getAttribute("Name");
-                const serverDiv = document.getElementById("serverInfo");
-                serverDiv.style.display = "block";
-                serverDiv.innerHTML = `🌐 Máy chủ: ${sName} | 🟢 Đang Online: <span style="color:red; font-size: 22px;">${online}</span> người`;
-            }
-        } catch(e) {
-            console.error("Lỗi lấy thông tin server: ", e);
-        }
-    }
-
-    // 4. Luồng xử lý chính khi bấm nút
-    async function startCheck() {
-        const u = document.getElementById('user').value;
-        const p = document.getElementById('pass').value;
-        const status = document.getElementById('status');
-        const tbody = document.querySelector('#friendsTable tbody');
-
-        if(!u || !p) return alert("Vui lòng nhập đủ tài khoản và mật khẩu!");
-
-        try {
-            tbody.innerHTML = "";
-            
-            // Bước 1: Load TemplateAllList.xml nếu chưa load
-            if (Object.keys(itemTemplateMap).length === 0) {
-                await loadTemplateAllList();
-            }
-
-            status.innerText = "🚀 Đang kiểm tra Server...";
-            
-            // Bước 2: Cập nhật thông tin Server Online
-            await checkServerStatus();
-
-            status.innerText = "🔑 Đang đăng nhập hệ thống...";
-
-            // Bước 3: Đăng nhập (Duy cần điều chỉnh API Login tùy theo backend thực tế)
-            const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
-            
-            // --- GIẢ LẬP ĐĂNG NHẬP (Thay thế bằng code fetch login của bạn) ---
-            const realID = "154"; 
-            const key = "f0adab566981f1306011b1ebab1d9520";
-            // ------------------------------------------------------------------
-
-            // Bước 4: Tải danh sách bạn bè
-            status.innerText = "📡 Đang tải danh sách bạn bè...";
-            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
-            
-            const response = await fetch(friendsUrl);
-            const arrayBuffer = await response.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
-
-            // Bước 5: Giải nén Zlib
-            status.innerText = "📂 Đang giải mã dữ liệu...";
-            let decodedXml;
-            try {
-                const idx = uint8Array.indexOf(0x78);
-                const dataToDecompress = idx >= 0 ? uint8Array.slice(idx) : uint8Array;
-                decodedXml = pako.inflate(dataToDecompress, { to: 'string' });
-            } catch (e) {
-                decodedXml = new TextDecoder().decode(uint8Array);
-            }
-
-            // Bước 6: Parse XML Bạn bè và Render ra bảng
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
-            const items = xmlDoc.getElementsByTagName("Item");
-
-            if(items.length === 0) {
-                status.innerText = "📭 Danh sách bạn bè trống.";
-                return;
-            }
-
-            for (let item of items) {
-                const nick = item.getAttribute("NickName");
-                const grade = item.getAttribute("Grade");
-                const state = item.getAttribute("State"); 
-                const style = item.getAttribute("Style");
-                const sex = item.getAttribute("Sex");
-                const consortia = item.getAttribute("ConsortiaName") || "Không có";
-
-                // Sinh HTML hình ảnh nhân vật
-                const avatarHtml = renderAvatarHtml(style, sex);
-
-                const row = `<tr>
-                    <td>${avatarHtml}</td>
-                    <td>
-                        <strong>${nick}</strong><br>
-                        <span class="grade-badge">Lv.${grade}</span>
-                    </td>
-                    <td>${consortia}</td>
-                    <td class="${state == "1" ? "online" : "offline"}">
-                        ${state == "1" ? "🟢 ONLINE" : "🔴 OFFLINE"}
-                    </td>
-                </tr>`;
-                tbody.innerHTML += row;
-            }
-
-            status.innerText = `✅ Đã quét xong ${items.length} người bạn!`;
-            status.style.color = "green";
-
-        } catch (e) {
-            status.innerText = "❌ Lỗi: " + e.message;
-            status.style.color = "red";
-            console.error(e);
-        }
-    }
-</script>
-
-</body>
-</html>
+            console.log(
