@@ -120,31 +120,31 @@
         }
     }
 
-    // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
-   // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
+  // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
         }
 
         const sexChar = isMale == "true" ? "m" : "f";
-        const baseUrl = "https://res.gakiemhiep.top/image/equip";
-        const styleIds = styleStr.split(','); 
+        const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
+        const armBaseUrl = "https://res.gakiemhiep.top/image/arm";
         
+        const styleIds = styleStr.split(','); 
         let layers = [];
         
         // Body mặc định (lớp dưới cùng)
-        layers.push(`${baseUrl}/${sexChar}/body/default/show.png`);
+        layers.push(`${equipBaseUrl}/${sexChar}/body/default/show.png`);
 
         // Duyệt qua từng Item đang mặc
         for (let id of styleIds) {
-            const cleanId = id.split('|')[0]; // Lấy ID chính, bỏ qua màu sắc phụ (nếu có)
+            const cleanId = id.split('|')[0]; // Lấy ID chính
             if (!cleanId || cleanId === "") continue;
 
-            const pic = itemTemplateMap[cleanId]; // Tra cứu mã Pic từ Template (VD: cloth587)
+            const pic = itemTemplateMap[cleanId]; 
             if (!pic) continue; 
             
-            // Phân tích thư mục theo tiền tố Pic
+            // Phân loại thư mục
             let folder = "";
             if (pic.startsWith("cloth")) folder = "cloth";
             else if (pic.startsWith("face")) folder = "face";
@@ -152,30 +152,38 @@
             else if (pic.startsWith("glass")) folder = "glass";
             else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
-            else if (pic.startsWith("arm")) folder = "arm";
+            else if (pic.startsWith("arm") || !isNaN(pic)) folder = "arm"; // Vũ khí thường là mã số
             else if (pic.startsWith("wing")) folder = "wing";
             else folder = "default";
             
-            if (folder !== "") {
-                if (folder === "hair") {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
-                } else if (folder === "cloth") {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); // Layer tay áo
-                } else {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
-                }
+            // XỬ LÝ ĐƯỜNG DẪN RIÊNG CHO TỪNG BỘ PHẬN
+            if (folder === "face" || folder === "eff" || folder === "glass") {
+                // Dùng icon_1.png cho mặt, biểu cảm, mắt kính để lấy ảnh tĩnh
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/icon_1.png`);
+            } 
+            else if (folder === "hair") {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
+            } 
+            else if (folder === "cloth") {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`); // Lớp thân
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); // Lớp tay áo
+            } 
+            else if (folder === "arm") {
+                // Vũ khí không nằm trong thư mục nam/nữ
+                // Thêm chữ 's' vào trước mã vũ khí nếu chưa có (vd: 12403 -> s12403)
+                let armPic = pic.startsWith('s') ? pic : `s${pic}`;
+                layers.push(`${armBaseUrl}/${armPic}/1/0/show.png`);
+            } 
+            else {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
             }
         }
 
-        // ==========================================
-        // ĐIỂM SỬA QUAN TRỌNG NHẤT Ở ĐÂY:
-        // Bọc url của ảnh qua con Proxy để bypass Cloudflare
-        // ==========================================
+        // Render ra HTML và bọc qua Proxy để vượt Cloudflare
         let imgTags = layers.map(url => {
-            // Encode url ảnh và ghép vào sau link proxy
             const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
-            return `<img src="${proxiedUrl}" onerror="this.style.display='none'">`;
+            // Vẫn dùng thẻ div background để an toàn crop các frame thừa của tóc/áo (nếu có)
+            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
         }).join('');
 
         return `<div class="avatar-container">${imgTags}</div>`;
