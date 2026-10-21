@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Duy Tool Online - Check Friends & Avatar</title>
+    <!-- Thư viện giải nén Zlib và mã hóa MD5 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <style>
-        /* Định nghĩa biến CSS mặc định cho Avatar */
+    <style>
+        /* Định nghĩa biến CSS mặc định cho Avatar (Đã căn chuẩn) */
         :root {
-            --ava-scale: 1;    /* Tỷ lệ mặc định */
-            --ava-x: 10px;     /* Kéo sang phải một chút cho cân giữa */
-            --ava-y: 0px;      /* Trục Y mặc định */
+            --ava-scale: 0.75;  
+            --ava-x: 0px;       
+            --ava-y: -15px;     
         }
 
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
@@ -41,37 +42,37 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* 1. Khung ngoài cùng giới hạn tầm nhìn (Khung xám) */
+        /* 1. Khung hộp giới hạn (đóng vai trò như khung tranh) */
         .avatar-container {
-            width: 140px;
-            height: 140px;
+            width: 120px;
+            height: 120px;
             position: relative;
             margin: auto;
             background: #f5f5f5;
             border-radius: 8px;
-            overflow: hidden;
+            overflow: hidden; /* Cắt bỏ những phần lòi ra ngoài */
             border: 1px solid #ccc;
         }
         
-        /* 2. Khung gói các layer để di chuyển và phóng to (Giải quyết lỗi đứt ảnh) */
+        /* 2. Khung gói các layer để di chuyển và phóng to nguyên cụm nhân vật */
         .avatar-wrapper {
             position: absolute;
             top: 0;
             left: 0;
             width: 120px;
             height: 175px;
-            transform-origin: top left;
-            /* Dịch chuyển trước, bóp Scale sau */
+            transform-origin: top center;
+            /* Lấy giá trị dịch chuyển và thu phóng từ thanh trượt */
             transform: translate(var(--ava-x), var(--ava-y)) scale(var(--ava-scale)); 
         }
 
-        /* 3. Từng layer chỉ làm đúng 1 việc là crop khung hình đầu tiên */
+        /* 3. Từng layer (tóc, áo, mặt) - chỉ làm nhiệm vụ lấy khung chuẩn 120x175 */
         .avatar-layer {
             position: absolute;
             top: 0; 
             left: 0;
-            width: 100%; 
-            height: 100%; 
+            width: 120px; 
+            height: 175px; 
             background-position: left top;
             background-repeat: no-repeat;
             image-rendering: pixelated; 
@@ -83,14 +84,14 @@
 <div class="container">
     <h2>Gunny Tool - Check Server & Friends</h2>
     
-    <!-- Bảng điều khiển thanh trượt -->
+    <!-- Bảng điều khiển thanh trượt (Đã thiết lập default khớp với CSS) -->
     <div class="control-panel">
         <h4>🛠 Căn Chỉnh Avatar Trực Tiếp</h4>
         
         <div class="slider-group">
             <label>🔍 Phóng to / Thu nhỏ:</label>
-            <input type="range" id="sliderScale" min="0.4" max="1.5" step="0.05" value="0.85">
-            <span id="valScale">0.85</span>
+            <input type="range" id="sliderScale" min="0.4" max="1.5" step="0.05" value="0.75">
+            <span id="valScale">0.75</span>
         </div>
 
         <div class="slider-group">
@@ -101,8 +102,8 @@
 
         <div class="slider-group">
             <label>↕️ Lên / Xuống (Trục Y):</label>
-            <input type="range" id="sliderY" min="-80" max="80" step="1" value="15">
-            <span id="valY">15</span>
+            <input type="range" id="sliderY" min="-80" max="80" step="1" value="-15">
+            <span id="valY">-15</span>
         </div>
     </div>
 
@@ -147,7 +148,7 @@
         document.getElementById('valY').innerText = this.value;
     });
 
-    // --- LOGIC GAME GUNNY CŨ BÊN DƯỚI ---
+    // --- LOGIC GAME GUNNY ---
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
     let itemTemplateMap = {}; 
 
@@ -181,8 +182,8 @@
                 }
             }
         } catch (e) {
-            console.error("Lỗi tải TemplateAllList: ", e);
-            throw new Error("Không thể tải dữ liệu trang bị của game.");
+            console.error("Lỗi tải Template: ", e);
+            throw new Error("Không thể tải dữ liệu trang bị.");
         }
     }
 
@@ -197,7 +198,6 @@
         const styleIds = styleStr.split(','); 
         let layers = [];
         
-        // Background Base Body
         layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1 });
         layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2 });
 
@@ -235,7 +235,10 @@
             return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
         }).join('');
 
-        return `<div class="avatar-container">${imgTags}</div>`;
+        // BỌC CÁC LAYER TRONG AVATAR-WRAPPER
+        return `<div class="avatar-container">
+                    <div class="avatar-wrapper">${imgTags}</div>
+                </div>`;
     }
 
     async function checkServerStatus() {
