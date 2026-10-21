@@ -114,4 +114,180 @@
                     itemTemplateMap[id] = pic;
                 }
             }
-            console.log(
+            console.log(`✅ Đã load xong Template: ${Object.keys(itemTemplateMap).length} items`);
+        } catch (e) {
+            console.error("Lỗi tải TemplateAllList: ", e);
+            throw new Error("Không thể tải dữ liệu trang bị của game.");
+        }
+    }
+
+    // 2. Render Avatar Html
+    function renderAvatarHtml(styleStr, isMale) {
+        if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
+            return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
+        }
+
+        const sexChar = isMale == "true" ? "m" : "f";
+        const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
+        const armBaseUrl = "https://res.gakiemhiep.top/image/arm";
+        
+        const styleIds = styleStr.split(','); 
+        let layers = [];
+        
+        // Body mặc định
+        layers.push(`${equipBaseUrl}/${sexChar}/body/default/show.png`);
+
+        for (let id of styleIds) {
+            const cleanId = id.split('|')[0];
+            if (!cleanId || cleanId === "") continue;
+
+            const pic = itemTemplateMap[cleanId]; 
+            if (!pic) continue; 
+            
+            let folder = "";
+            if (pic.startsWith("cloth")) folder = "cloth";
+            else if (pic.startsWith("face")) folder = "face";
+            else if (pic.startsWith("hair")) folder = "hair";
+            else if (pic.startsWith("glass")) folder = "glass";
+            else if (pic.startsWith("head")) folder = "head";
+            else if (pic.startsWith("eff")) folder = "eff";
+            else if (pic.startsWith("arm") || !isNaN(pic)) folder = "arm"; 
+            else if (pic.startsWith("wing")) folder = "wing";
+            else folder = "default";
+            
+            if (folder === "face" || folder === "eff" || folder === "glass") {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/icon_1.png`);
+            } 
+            else if (folder === "hair") {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
+            } 
+            else if (folder === "cloth") {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`); 
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); 
+            } 
+            else if (folder === "arm") {
+                let armPic = pic.startsWith('s') ? pic : `s${pic}`;
+                layers.push(`${armBaseUrl}/${armPic}/1/0/show.png`);
+            } 
+            else {
+                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
+            }
+        }
+
+        let imgTags = layers.map(url => {
+            const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
+            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
+        }).join('');
+
+        return `<div class="avatar-container">${imgTags}</div>`;
+    }
+
+    // 3. Check Server Status
+    async function checkServerStatus() {
+        try {
+            const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
+            const res = await fetch(serverUrl).then(r => r.text());
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(res, "text/xml");
+            const item = xmlDoc.getElementsByTagName("Item")[0];
+            
+            if(item) {
+                const online = item.getAttribute("Online");
+                const sName = item.getAttribute("Name");
+                const serverDiv = document.getElementById("serverInfo");
+                serverDiv.style.display = "block";
+                serverDiv.innerHTML = `🌐 Máy chủ: ${sName} | 🟢 Đang Online: <span style="color:red; font-size: 22px;">${online}</span> người`;
+            }
+        } catch(e) {
+            console.error("Lỗi lấy thông tin server: ", e);
+        }
+    }
+
+    // 4. Luồng xử lý chính
+    async function startCheck() {
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        const status = document.getElementById('status');
+        const tbody = document.querySelector('#friendsTable tbody');
+
+        if(!u || !p) return alert("Vui lòng nhập đủ tài khoản và mật khẩu!");
+
+        try {
+            tbody.innerHTML = "";
+            
+            if (Object.keys(itemTemplateMap).length === 0) {
+                await loadTemplateAllList();
+            }
+
+            status.innerText = "🚀 Đang kiểm tra Server...";
+            await checkServerStatus();
+
+            status.innerText = "🔑 Đang đăng nhập hệ thống...";
+            
+            // Code giả lập đăng nhập, lấy Real ID & Key
+            const realID = "154"; 
+            const key = "f0adab566981f1306011b1ebab1d9520";
+
+            status.innerText = "📡 Đang tải danh sách bạn bè...";
+            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
+            
+            const response = await fetch(friendsUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            status.innerText = "📂 Đang giải mã dữ liệu...";
+            let decodedXml;
+            try {
+                const idx = uint8Array.indexOf(0x78);
+                const dataToDecompress = idx >= 0 ? uint8Array.slice(idx) : uint8Array;
+                decodedXml = pako.inflate(dataToDecompress, { to: 'string' });
+            } catch (e) {
+                decodedXml = new TextDecoder().decode(uint8Array);
+            }
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
+            const items = xmlDoc.getElementsByTagName("Item");
+
+            if(items.length === 0) {
+                status.innerText = "📭 Danh sách bạn bè trống.";
+                return;
+            }
+
+            for (let item of items) {
+                const nick = item.getAttribute("NickName");
+                const grade = item.getAttribute("Grade");
+                const state = item.getAttribute("State"); 
+                const style = item.getAttribute("Style");
+                const sex = item.getAttribute("Sex");
+                const consortia = item.getAttribute("ConsortiaName") || "Không có";
+
+                const avatarHtml = renderAvatarHtml(style, sex);
+
+                const row = `<tr>
+                    <td>${avatarHtml}</td>
+                    <td>
+                        <strong>${nick}</strong><br>
+                        <span class="grade-badge">Lv.${grade}</span>
+                    </td>
+                    <td>${consortia}</td>
+                    <td class="${state == "1" ? "online" : "offline"}">
+                        ${state == "1" ? "🟢 ONLINE" : "🔴 OFFLINE"}
+                    </td>
+                </tr>`;
+                tbody.innerHTML += row;
+            }
+
+            status.innerText = `✅ Đã quét xong ${items.length} người bạn!`;
+            status.style.color = "green";
+
+        } catch (e) {
+            status.innerText = "❌ Lỗi: " + e.message;
+            status.style.color = "red";
+            console.error(e);
+        }
+    }
+</script>
+
+</body>
+</html>
