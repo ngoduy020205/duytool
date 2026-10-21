@@ -5,12 +5,12 @@
     <title>Duy Tool Online - Check Friends & Avatar</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <style>
+  <style>
         /* Định nghĩa biến CSS mặc định cho Avatar */
         :root {
-            --ava-scale: 0.85; /* Tỷ lệ phóng to thu nhỏ */
-            --ava-x: 0px;      /* Dịch chuyển trục X (trái/phải) */
-            --ava-y: 15px;     /* Dịch chuyển trục Y (lên/xuống) */
+            --ava-scale: 1;    /* Tỷ lệ mặc định */
+            --ava-x: 10px;     /* Kéo sang phải một chút cho cân giữa */
+            --ava-y: 0px;      /* Trục Y mặc định */
         }
 
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
@@ -41,9 +41,9 @@
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* Khung Avatar tĩnh */
+        /* 1. Khung ngoài cùng giới hạn tầm nhìn (Khung xám) */
         .avatar-container {
-            width: 120px;
+            width: 140px;
             height: 140px;
             position: relative;
             margin: auto;
@@ -53,18 +53,27 @@
             border: 1px solid #ccc;
         }
         
-        /* Layer động ăn theo thanh trượt */
+        /* 2. Khung gói các layer để di chuyển và phóng to (Giải quyết lỗi đứt ảnh) */
+        .avatar-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 175px;
+            transform-origin: top left;
+            /* Dịch chuyển trước, bóp Scale sau */
+            transform: translate(var(--ava-x), var(--ava-y)) scale(var(--ava-scale)); 
+        }
+
+        /* 3. Từng layer chỉ làm đúng 1 việc là crop khung hình đầu tiên */
         .avatar-layer {
             position: absolute;
             top: 0; 
             left: 0;
-            width: 120px; /* Cố định width 120px để crop đúng 1 khung mặt */
-            height: 175px; 
+            width: 100%; 
+            height: 100%; 
             background-position: left top;
             background-repeat: no-repeat;
-            transform-origin: top center;
-            /* Lấy giá trị di chuyển từ các thanh trượt */
-            transform: scale(var(--ava-scale)) translate(var(--ava-x), var(--ava-y)); 
             image-rendering: pixelated; 
         }
     </style>
