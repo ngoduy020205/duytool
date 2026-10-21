@@ -2,35 +2,59 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Duy Tool Online - Check Friends</title>
+    <title>Duy Tool Online - Check Friends & Avatar</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .container { max-width: 850px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { color: #2c3e50; text-align: center; margin-top: 0; }
+        .server-info { text-align: center; font-size: 18px; color: #1565c0; font-weight: bold; margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px; display: none; }
         .login-box { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
         input { padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; width: 150px; }
         button { padding: 10px 20px; background: #1e88e5; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
         button:hover { background: #1565c0; }
         #status { display: block; text-align: center; margin-bottom: 15px; font-weight: bold; color: #546e7a; }
         table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: center; vertical-align: middle; }
         th { background: #f5f5f5; color: #455a64; }
         .online { color: #2e7d32; font-weight: bold; }
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        
+        /* Box hiển thị Avatar cắt lớp */
+        .avatar-container {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin: auto;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+        .avatar-container img {
+            position: absolute;
+            top: -20px; /* Điều chỉnh toạ độ Y để nhân vật vào giữa khung */
+            left: -15px; /* Điều chỉnh toạ độ X */
+            width: 150px; /* Tỉ lệ phóng to ảnh layer */
+            image-rendering: pixelated; /* Giữ độ nét của pixel art */
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Check Phờ Ren Online</h2>
+    <h2>Gunny Tool - Check Server & Friends</h2>
     
+    <div id="serverInfo" class="server-info">
+        Đang tải thông tin server...
+    </div>
+
     <div class="login-box">
         <input type="text" id="user" placeholder="Tài khoản">
         <input type="password" id="pass" placeholder="Mật khẩu">
-        <button onclick="startCheck()">BẮT ĐẦU QUÉT</button>
+        <button onclick="startCheck()">ĐĂNG NHẬP & QUÉT</button>
     </div>
 
     <div id="status">Nhập tài khoản để bắt đầu...</div>
@@ -38,20 +62,138 @@
     <table id="friendsTable">
         <thead>
             <tr>
-                <th>Tên nhân vật</th>
-                <th>Cấp độ</th>
+                <th>Nhân vật</th>
+                <th>Thông tin</th>
+                <th>Bang Hội</th>
                 <th>Trạng thái</th>
             </tr>
         </thead>
         <tbody>
-            </tbody>
+        </tbody>
     </table>
 </div>
 
 <script>
-    // Duy thay link Worker Cloudflare của Duy vào đây để tool chạy được nhé
+    // Link Proxy của bạn
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
 
+    // Bộ nhớ đệm chứa mapping (TemplateID -> Pic)
+    let itemTemplateMap = {}; 
+
+    // 1. Hàm tải và giải nén TemplateAllList.xml
+    async function loadTemplateAllList() {
+        try {
+            document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
+            const templateUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/templatealllist.xml?rnd=${Math.random()}`)}`;
+            
+            const response = await fetch(templateUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            // Giải mã Zlib bằng pako
+            let decodedXml;
+            try {
+                const idx = uint8Array.indexOf(0x78);
+                const dataToDecompress = idx >= 0 ? uint8Array.slice(idx) : uint8Array;
+                decodedXml = pako.inflate(dataToDecompress, { to: 'string' });
+            } catch (e) {
+                decodedXml = new TextDecoder().decode(uint8Array);
+            }
+
+            // Parse XML và lấy mảng Item
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
+            const items = xmlDoc.getElementsByTagName("Item");
+
+            // Lưu vào dictionary
+            for (let item of items) {
+                const id = item.getAttribute("TemplateID");
+                const pic = item.getAttribute("Pic");
+                if (id && pic) {
+                    itemTemplateMap[id] = pic;
+                }
+            }
+            console.log(`✅ Đã load xong Template: ${Object.keys(itemTemplateMap).length} items`);
+        } catch (e) {
+            console.error("Lỗi tải TemplateAllList: ", e);
+            throw new Error("Không thể tải dữ liệu trang bị của game.");
+        }
+    }
+
+    // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
+    function renderAvatarHtml(styleStr, isMale) {
+        if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
+            return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
+        }
+
+        const sexChar = isMale == "true" ? "m" : "f";
+        const baseUrl = "https://res.gakiemhiep.top/image/equip";
+        const styleIds = styleStr.split(','); 
+        
+        let layers = [];
+        
+        // Body mặc định (lớp dưới cùng)
+        layers.push(`${baseUrl}/${sexChar}/body/default/show.png`);
+
+        // Duyệt qua từng Item đang mặc
+        for (let id of styleIds) {
+            const cleanId = id.split('|')[0]; // Lấy ID chính, bỏ qua màu sắc phụ (nếu có)
+            if (!cleanId || cleanId === "") continue;
+
+            const pic = itemTemplateMap[cleanId]; // Tra cứu mã Pic từ Template (VD: cloth587)
+            if (!pic) continue; 
+            
+            // Phân tích thư mục theo tiền tố Pic
+            let folder = "";
+            if (pic.startsWith("cloth")) folder = "cloth";
+            else if (pic.startsWith("face")) folder = "face";
+            else if (pic.startsWith("hair")) folder = "hair";
+            else if (pic.startsWith("glass")) folder = "glass";
+            else if (pic.startsWith("head")) folder = "head";
+            else if (pic.startsWith("eff")) folder = "eff";
+            else if (pic.startsWith("arm")) folder = "arm";
+            else if (pic.startsWith("wing")) folder = "wing";
+            else folder = "default";
+            
+            if (folder !== "") {
+                if (folder === "hair") {
+                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
+                } else if (folder === "cloth") {
+                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
+                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); // Layer tay áo
+                } else {
+                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
+                }
+            }
+        }
+
+        // Tạo chuỗi HTML các ảnh xếp chồng lên nhau
+        let imgTags = layers.map(url => `<img src="${url}" onerror="this.style.display='none'">`).join('');
+        return `<div class="avatar-container">${imgTags}</div>`;
+    }
+
+    // 3. Hàm tải trạng thái Server
+    async function checkServerStatus() {
+        try {
+            const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
+            const res = await fetch(serverUrl).then(r => r.text());
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(res, "text/xml");
+            const item = xmlDoc.getElementsByTagName("Item")[0];
+            
+            if(item) {
+                const online = item.getAttribute("Online");
+                const sName = item.getAttribute("Name");
+                const serverDiv = document.getElementById("serverInfo");
+                serverDiv.style.display = "block";
+                serverDiv.innerHTML = `🌐 Máy chủ: ${sName} | 🟢 Đang Online: <span style="color:red; font-size: 22px;">${online}</span> người`;
+            }
+        } catch(e) {
+            console.error("Lỗi lấy thông tin server: ", e);
+        }
+    }
+
+    // 4. Luồng xử lý chính khi bấm nút
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
@@ -62,47 +204,47 @@
 
         try {
             tbody.innerHTML = "";
-            status.innerText = "🚀 Đang đăng nhập hệ thống...";
             
-            // 1. MD5 Pass giống C#
+            // Bước 1: Load TemplateAllList.xml nếu chưa load
+            if (Object.keys(itemTemplateMap).length === 0) {
+                await loadTemplateAllList();
+            }
+
+            status.innerText = "🚀 Đang kiểm tra Server...";
+            
+            // Bước 2: Cập nhật thông tin Server Online
+            await checkServerStatus();
+
+            status.innerText = "🔑 Đang đăng nhập hệ thống...";
+
+            // Bước 3: Đăng nhập (Duy cần điều chỉnh API Login tùy theo backend thực tế)
             const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
+            
+            // --- GIẢ LẬP ĐĂNG NHẬP (Thay thế bằng code fetch login của bạn) ---
+            const realID = "154"; 
+            const key = "f0adab566981f1306011b1ebab1d9520";
+            // ------------------------------------------------------------------
 
-            // 2. Lấy RealID
-            const loginUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/req/LoginSelectList.ashx?username=${u}`)}`;
-            const loginRes = await fetch(loginUrl).then(r => r.text());
-            const realIDMatch = loginRes.match(/ID="(\d+)"/);
-            if(!realIDMatch) throw new Error("Sai tài khoản hoặc không tìm thấy nhân vật!");
-            const realID = realIDMatch[1];
-
-            // 3. Lấy Session Key
-            status.innerText = "🔑 Đang lấy Session Key...";
-            const keyUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/play/LoginGame.aspx`)}`;
-            const keyPage = await fetch(keyUrl).then(r => r.text());
-            const keyMatch = keyPage.match(/key=([a-f0-9\-]{36})/);
-            const key = keyMatch ? keyMatch[1] : "";
-
-            // 4. Tải danh sách bạn bè (Zlib binary)
+            // Bước 4: Tải danh sách bạn bè
             status.innerText = "📡 Đang tải danh sách bạn bè...";
-            const friendsUrl = `${PROXY}${encodeURIComponent(`https://gacongnghiep.net/req/imlistload.ashx?id=${realID}&uname=${u}&selfid=${realID}&key=${key}&rnd=${Math.random()}`)}`;
+            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
             
             const response = await fetch(friendsUrl);
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            // 5. Giải mã Zlib (pako) giống logic Decompress trong C#
+            // Bước 5: Giải nén Zlib
             status.innerText = "📂 Đang giải mã dữ liệu...";
             let decodedXml;
             try {
-                // Tìm vị trí byte 0x78 giống C# của Duy
                 const idx = uint8Array.indexOf(0x78);
                 const dataToDecompress = idx >= 0 ? uint8Array.slice(idx) : uint8Array;
                 decodedXml = pako.inflate(dataToDecompress, { to: 'string' });
             } catch (e) {
-                // Nếu không nén thì đọc text trực tiếp
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
-            // 6. Phân tích XML và hiển thị
+            // Bước 6: Parse XML Bạn bè và Render ra bảng
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
@@ -115,12 +257,24 @@
             for (let item of items) {
                 const nick = item.getAttribute("NickName");
                 const grade = item.getAttribute("Grade");
-                const state = item.getAttribute("State"); // 1 = On, 0 = Off
+                const state = item.getAttribute("State"); 
+                const style = item.getAttribute("Style");
+                const sex = item.getAttribute("Sex");
+                const consortia = item.getAttribute("ConsortiaName") || "Không có";
+
+                // Sinh HTML hình ảnh nhân vật
+                const avatarHtml = renderAvatarHtml(style, sex);
 
                 const row = `<tr>
-                    <td>${nick}</td>
-                    <td><span class="grade-badge">Lv.${grade}</span></td>
-                    <td class="${state == "1" ? "online" : "offline"}">${state == "1" ? "ONLINE" : "OFFLINE"}</td>
+                    <td>${avatarHtml}</td>
+                    <td>
+                        <strong>${nick}</strong><br>
+                        <span class="grade-badge">Lv.${grade}</span>
+                    </td>
+                    <td>${consortia}</td>
+                    <td class="${state == "1" ? "online" : "offline"}">
+                        ${state == "1" ? "🟢 ONLINE" : "🔴 OFFLINE"}
+                    </td>
                 </tr>`;
                 tbody.innerHTML += row;
             }
