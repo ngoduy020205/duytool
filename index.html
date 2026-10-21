@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Duy Tool Online - Check Friends & Avatar</title>
+    <!-- Thư viện giải nén Zlib và mã hóa MD5 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
@@ -34,18 +35,18 @@
             border: 1px solid #ccc;
         }
         
-        /* CSS chuẩn cho các bộ phận lớn (thân, tóc, áo) */
+        /* CSS tự động Crop frame đầu tiên và căn tọa độ chuẩn của game */
         .avatar-layer {
             position: absolute;
-            top: -25px; 
+            top: -25px; /* Kéo nhân vật lên để lấy phần thân trên */
             left: 0;
-            width: 120px; 
-            height: 175px; 
+            width: 120px; /* Chiều rộng chuẩn của 1 frame Gunny */
+            height: 175px; /* Chiều cao chuẩn của 1 frame Gunny */
             background-position: left top;
             background-repeat: no-repeat;
             transform-origin: top center;
-            transform: scale(1.15); 
-            image-rendering: pixelated; 
+            transform: scale(1.15); /* Phóng to nhẹ cho vừa khung 120x120 */
+            image-rendering: pixelated; /* Giữ độ nét của pixel art */
         }
     </style>
 </head>
@@ -81,10 +82,13 @@
 </div>
 
 <script>
+    // Link Proxy của bạn để vượt Cloudflare
     const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
+    
+    // Bộ nhớ đệm chứa mapping (TemplateID -> Pic)
     let itemTemplateMap = {}; 
 
-    // 1. Tải TemplateAllList.xml
+    // 1. Hàm tải và giải nén TemplateAllList.xml
     async function loadTemplateAllList() {
         try {
             document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
@@ -94,6 +98,7 @@
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
+            // Giải mã Zlib bằng pako
             let decodedXml;
             try {
                 const idx = uint8Array.indexOf(0x78);
@@ -103,10 +108,12 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
+            // Parse XML và lấy mảng Item
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
 
+            // Lưu vào dictionary
             for (let item of items) {
                 const id = item.getAttribute("TemplateID");
                 const pic = item.getAttribute("Pic");
@@ -131,13 +138,15 @@
         const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
         
         const styleIds = styleStr.split(','); 
+        
+        // Mảng chứa layer kèm thứ tự z-index để xếp chồng đúng chuẩn game
         let layers = [];
         
-        // 1. Thêm Body và Head mặc định (bắt buộc phải có để tạo hộp sọ phía sau khuôn mặt)
-        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, type: 'normal' });
-        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, type: 'normal' });
+        // Body và Head mặc định (lớp nền)
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1 });
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2 });
 
-        // 2. Lọc các layer trang bị
+        // Phân loại layer và lấy tọa độ chuẩn
         for (let id of styleIds) {
             const cleanId = id.split('|')[0];
             if (!cleanId || cleanId === "") continue;
@@ -152,43 +161,43 @@
             else if (pic.startsWith("glass")) folder = "glass";
             else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
-            else if (pic.startsWith("wing")) folder = "wing";
             else continue; 
             
-            // Đánh dấu các chi tiết nhỏ để dùng CSS căn chỉnh riêng
-            let type = (folder === "face" || folder === "eff" || folder === "glass") ? "face_accessory" : "normal";
-
-            if (folder === "hair") {
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, type: type });
+            if (folder === "face") {
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 3 });
+            }
+            else if (folder === "eff") {
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 4 });
+            }
+            else if (folder === "hair") {
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, zIndex: 6 });
             } 
+            else if (folder === "glass") {
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 7 });
+            }
             else if (folder === "cloth") {
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, type: type }); 
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, type: type }); 
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 }); // Thân áo
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8 }); // Tay áo (nằm ngoài cùng)
             } 
             else {
-                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, type: type });
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 });
             }
         }
 
-        // 3. Render các layer ra thẻ div với CSS tương ứng
+        // Sắp xếp các layer theo thứ tự z-index từ dưới lên trên
+        layers.sort((a, b) => a.zIndex - b.zIndex);
+
+        // Render ra HTML
         let imgTags = layers.map(layer => {
             const proxiedUrl = `${PROXY}${encodeURIComponent(layer.url)}`;
-            
-            if (layer.type === 'face_accessory') {
-                // ÉP TỌA ĐỘ VÀ KÍCH THƯỚC CHUẨN CHO MẶT VÀ MẮT
-                // Bạn có thể sửa left và top ở đây nếu muốn mặt xê dịch thêm
-                const customStyle = `background-image: url('${proxiedUrl}'); left: 32px; top: 12px; width: 55px; height: 50px;`;
-                return `<div class="avatar-layer" style="${customStyle}"></div>`;
-            } else {
-                // Các bộ phận khác (thân, tóc, áo) dùng CSS mặc định
-                return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
-            }
+            // Thẻ div background-image kết hợp class CSS sẽ tự động crop frame hoàn hảo
+            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
         }).join('');
 
         return `<div class="avatar-container">${imgTags}</div>`;
     }
 
-    // 3. Check Server Status
+    // 3. Hàm tải trạng thái Server
     async function checkServerStatus() {
         try {
             const serverUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/serverlist.ashx?rnd=${Math.random()}`)}`;
@@ -209,7 +218,7 @@
         }
     }
 
-    // 4. Luồng xử lý chính
+    // 4. Luồng xử lý chính khi bấm nút
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
@@ -221,18 +230,26 @@
         try {
             tbody.innerHTML = "";
             
+            // Bước 1: Load TemplateAllList.xml nếu chưa load
             if (Object.keys(itemTemplateMap).length === 0) {
                 await loadTemplateAllList();
             }
 
             status.innerText = "🚀 Đang kiểm tra Server...";
+            
+            // Bước 2: Cập nhật thông tin Server Online
             await checkServerStatus();
 
             status.innerText = "🔑 Đang đăng nhập hệ thống...";
+
+            // Bước 3: Đăng nhập giả lập
+            const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
             
+            // Thông tin mô phỏng
             const realID = "154"; 
             const key = "f0adab566981f1306011b1ebab1d9520";
 
+            // Bước 4: Tải danh sách bạn bè
             status.innerText = "📡 Đang tải danh sách bạn bè...";
             const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
             
@@ -240,6 +257,7 @@
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
+            // Bước 5: Giải nén Zlib
             status.innerText = "📂 Đang giải mã dữ liệu...";
             let decodedXml;
             try {
@@ -250,6 +268,7 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
+            // Bước 6: Parse XML Bạn bè và Render ra bảng
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
@@ -267,6 +286,7 @@
                 const sex = item.getAttribute("Sex");
                 const consortia = item.getAttribute("ConsortiaName") || "Không có";
 
+                // Sinh HTML hình ảnh nhân vật
                 const avatarHtml = renderAvatarHtml(style, sex);
 
                 const row = `<tr>
