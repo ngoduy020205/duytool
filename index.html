@@ -34,18 +34,18 @@
             border: 1px solid #ccc;
         }
         
-        /* CSS bắt buộc để hiển thị và crop khung ảnh đầu tiên của nhân vật */
+        /* CSS chuẩn cho các bộ phận lớn (thân, tóc, áo) */
         .avatar-layer {
             position: absolute;
-            top: -25px; /* Kéo nhân vật lên để lấy phần thân trên */
+            top: -25px; 
             left: 0;
-            width: 120px; /* Chiều rộng chuẩn của 1 frame Gunny */
-            height: 175px; /* Chiều cao chuẩn của 1 frame Gunny */
+            width: 120px; 
+            height: 175px; 
             background-position: left top;
             background-repeat: no-repeat;
             transform-origin: top center;
-            transform: scale(1.15); /* Phóng to nhẹ cho vừa khung 120x120 */
-            image-rendering: pixelated; /* Giữ độ nét của pixel art */
+            transform: scale(1.15); 
+            image-rendering: pixelated; 
         }
     </style>
 </head>
@@ -121,7 +121,7 @@
         }
     }
 
-  // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
+    // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
@@ -133,8 +133,9 @@
         const styleIds = styleStr.split(','); 
         let layers = [];
         
-        // 1. Thêm Body mặc định (lớp dưới cùng)
-        layers.push(`${equipBaseUrl}/${sexChar}/body/default/show.png`);
+        // 1. Thêm Body và Head mặc định (bắt buộc phải có để tạo hộp sọ phía sau khuôn mặt)
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, type: 'normal' });
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, type: 'normal' });
 
         // 2. Lọc các layer trang bị
         for (let id of styleIds) {
@@ -152,26 +153,36 @@
             else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
             else if (pic.startsWith("wing")) folder = "wing";
-            // Bỏ qua vũ khí (arm) và các vật phẩm không hiển thị trên avatar web
             else continue; 
             
-            // 3. Đưa lại toàn bộ về show.png. Khung CSS sẽ tự động crop frame đầu tiên.
+            // Đánh dấu các chi tiết nhỏ để dùng CSS căn chỉnh riêng
+            let type = (folder === "face" || folder === "eff" || folder === "glass") ? "face_accessory" : "normal";
+
             if (folder === "hair") {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, type: type });
             } 
             else if (folder === "cloth") {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`); 
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); 
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, type: type }); 
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, type: type }); 
             } 
             else {
-                layers.push(`${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, type: type });
             }
         }
 
-        // 4. Render các layer
-        let imgTags = layers.map(url => {
-            const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
-            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
+        // 3. Render các layer ra thẻ div với CSS tương ứng
+        let imgTags = layers.map(layer => {
+            const proxiedUrl = `${PROXY}${encodeURIComponent(layer.url)}`;
+            
+            if (layer.type === 'face_accessory') {
+                // ÉP TỌA ĐỘ VÀ KÍCH THƯỚC CHUẨN CHO MẶT VÀ MẮT
+                // Bạn có thể sửa left và top ở đây nếu muốn mặt xê dịch thêm
+                const customStyle = `background-image: url('${proxiedUrl}'); left: 32px; top: 12px; width: 55px; height: 50px;`;
+                return `<div class="avatar-layer" style="${customStyle}"></div>`;
+            } else {
+                // Các bộ phận khác (thân, tóc, áo) dùng CSS mặc định
+                return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
+            }
         }).join('');
 
         return `<div class="avatar-container">${imgTags}</div>`;
@@ -219,7 +230,6 @@
 
             status.innerText = "🔑 Đang đăng nhập hệ thống...";
             
-            // Code giả lập đăng nhập, lấy Real ID & Key
             const realID = "154"; 
             const key = "f0adab566981f1306011b1ebab1d9520";
 
