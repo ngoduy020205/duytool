@@ -6,26 +6,42 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
+        /* Biến CSS Căn chỉnh Avatar mặc định */
+        :root {
+            --ava-scale: 0.85;  
+            --ava-x: -10px;       
+            --ava-y: -5px;     
+        }
+
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #eceff1; }
         .container { max-width: 850px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { color: #2c3e50; text-align: center; margin-top: 0; }
+        
         .server-info { text-align: center; font-size: 18px; color: #1565c0; font-weight: bold; margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 8px; display: none; }
+        
+        /* Bảng căn chỉnh Live */
+        .control-panel { background: #fff9c4; border: 1px dashed #fbc02d; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .control-panel h4 { margin: 0 0 10px 0; color: #f57f17; text-align: center; }
+        .slider-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .slider-group label { font-size: 14px; font-weight: bold; width: 200px; }
+        .slider-group input { flex-grow: 1; margin: 0 15px; }
+        .slider-group span { width: 40px; text-align: right; font-weight: bold; color: #d32f2f; }
+
         .login-box { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
-        input { padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; width: 150px; }
+        input[type="text"], input[type="password"] { padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; width: 150px; }
         button { padding: 10px 20px; background: #1e88e5; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; }
         button:hover { background: #1565c0; }
+        
         #status { display: block; text-align: center; margin-bottom: 15px; font-weight: bold; color: #546e7a; }
         
-        /* --- CSS MỚI CHO THANH TRƯỢT --- */
+        /* --- KHUNG BẢNG CÓ THANH CUỘN --- */
         .table-wrapper {
-            max-height: 550px; /* Giới hạn chiều cao bảng */
-            overflow-y: auto;  /* Bật thanh trượt dọc */
+            max-height: 550px; 
+            overflow-y: auto;  
             border-radius: 8px;
             border: 1px solid #e0e0e0;
             background: white;
         }
-        
-        /* Tùy chỉnh thanh cuộn cho đẹp mắt */
         .table-wrapper::-webkit-scrollbar { width: 8px; }
         .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
         .table-wrapper::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 8px; }
@@ -34,37 +50,48 @@
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: center; vertical-align: middle; }
         
-        /* Ghim cố định thanh tiêu đề khi cuộn */
         th { 
             background: #f5f5f5; 
             color: #455a64; 
             position: sticky; 
             top: 0; 
             z-index: 10; 
-            box-shadow: 0 2px 3px rgba(0,0,0,0.1); /* Đổ bóng nhẹ phân cách với nội dung */
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1); 
         }
         
         .online { color: #2e7d32; font-weight: bold; }
         .offline { color: #c62828; font-weight: bold; }
         .grade-badge { background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
         
-        /* Box hiển thị Avatar cắt lớp */
+        /* --- AVATAR CHUẨN --- */
         .avatar-container {
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             position: relative;
             margin: auto;
-            background: #f0f0f0;
+            background: #f5f5f5;
             border-radius: 8px;
-            overflow: hidden;
+            overflow: hidden; 
             border: 1px solid #ccc;
         }
-        .avatar-container img {
+        .avatar-wrapper {
             position: absolute;
-            top: -20px; /* Điều chỉnh toạ độ Y để nhân vật vào giữa khung */
-            left: -15px; /* Điều chỉnh toạ độ X */
-            width: 150px; /* Tỉ lệ phóng to ảnh layer */
-            image-rendering: pixelated; /* Giữ độ nét của pixel art */
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 175px;
+            transform-origin: top center;
+            transform: translate(var(--ava-x), var(--ava-y)) scale(var(--ava-scale)); 
+        }
+        .avatar-layer {
+            position: absolute;
+            top: 0; 
+            left: 0;
+            width: 120px; 
+            height: 175px; 
+            background-position: left top;
+            background-repeat: no-repeat;
+            image-rendering: pixelated; 
         }
     </style>
 </head>
@@ -73,9 +100,26 @@
 <div class="container">
     <h2>Gunny Tool - Check Server & Friends</h2>
     
-    <div id="serverInfo" class="server-info">
-        Đang tải thông tin server...
+    <div class="control-panel">
+        <h4>🛠 Căn Chỉnh Avatar Trực Tiếp</h4>
+        <div class="slider-group">
+            <label>🔍 Phóng to / Thu nhỏ:</label>
+            <input type="range" id="sliderScale" min="0.4" max="1.5" step="0.05" value="0.85">
+            <span id="valScale">0.85</span>
+        </div>
+        <div class="slider-group">
+            <label>↔️ Trái / Phải (Trục X):</label>
+            <input type="range" id="sliderX" min="-80" max="80" step="1" value="-10">
+            <span id="valX">-10</span>
+        </div>
+        <div class="slider-group">
+            <label>↕️ Lên / Xuống (Trục Y):</label>
+            <input type="range" id="sliderY" min="-80" max="80" step="1" value="-5">
+            <span id="valY">-5</span>
+        </div>
     </div>
+
+    <div id="serverInfo" class="server-info">Đang tải thông tin server...</div>
 
     <div class="login-box">
         <input type="text" id="user" placeholder="Tài khoản">
@@ -85,7 +129,6 @@
 
     <div id="status">Nhập tài khoản để bắt đầu...</div>
 
-    <!-- Bọc bảng vào thẻ div class table-wrapper -->
     <div class="table-wrapper">
         <table id="friendsTable">
             <thead>
@@ -103,13 +146,24 @@
 </div>
 
 <script>
-    // Link Proxy của bạn
-    const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
+    // Xử lý Thanh trượt
+    document.getElementById('sliderScale').addEventListener('input', function() {
+        document.documentElement.style.setProperty('--ava-scale', this.value);
+        document.getElementById('valScale').innerText = this.value;
+    });
+    document.getElementById('sliderX').addEventListener('input', function() {
+        document.documentElement.style.setProperty('--ava-x', this.value + 'px');
+        document.getElementById('valX').innerText = this.value;
+    });
+    document.getElementById('sliderY').addEventListener('input', function() {
+        document.documentElement.style.setProperty('--ava-y', this.value + 'px');
+        document.getElementById('valY').innerText = this.value;
+    });
 
-    // Bộ nhớ đệm chứa mapping (TemplateID -> Pic)
+    const PROXY = "https://duy-proxy.acechuon94.workers.dev/?url="; 
     let itemTemplateMap = {}; 
 
-    // 1. Hàm tải và giải nén TemplateAllList.xml
+    // 1. Tải TemplateAllList
     async function loadTemplateAllList() {
         try {
             document.getElementById('status').innerText = "📦 Đang tải dữ liệu trang bị (TemplateAllList)...";
@@ -119,7 +173,6 @@
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            // Giải mã Zlib bằng pako
             let decodedXml;
             try {
                 const idx = uint8Array.indexOf(0x78);
@@ -129,82 +182,68 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
-            // Parse XML và lấy mảng Item
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
 
-            // Lưu vào dictionary
             for (let item of items) {
                 const id = item.getAttribute("TemplateID");
                 const pic = item.getAttribute("Pic");
-                if (id && pic) {
-                    itemTemplateMap[id] = pic;
-                }
+                if (id && pic) itemTemplateMap[id] = pic;
             }
-            console.log(`✅ Đã load xong Template: ${Object.keys(itemTemplateMap).length} items`);
         } catch (e) {
             console.error("Lỗi tải TemplateAllList: ", e);
-            throw new Error("Không thể tải dữ liệu trang bị của game.");
+            throw new Error("Không thể tải dữ liệu trang bị.");
         }
     }
 
-  // 2. Hàm sinh HTML hiển thị Avatar từ chuỗi Style
+    // 2. Render Avatar
     function renderAvatarHtml(styleStr, isMale) {
         if (!styleStr || styleStr.replace(/,/g, '').length === 0) {
             return '<div class="avatar-container"><span style="font-size:10px;line-height:120px;">Trần truồng</span></div>';
         }
 
         const sexChar = isMale == "true" ? "m" : "f";
-        const baseUrl = "https://res.gakiemhiep.top/image/equip";
+        const equipBaseUrl = "https://res.gakiemhiep.top/image/equip";
         const styleIds = styleStr.split(','); 
-        
         let layers = [];
         
-        // Body mặc định (lớp dưới cùng)
-        layers.push(`${baseUrl}/${sexChar}/body/default/show.png`);
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/body/default/show.png`, zIndex: 1 });
+        layers.push({ url: `${equipBaseUrl}/${sexChar}/head/default/1/show.png`, zIndex: 2 });
 
-        // Duyệt qua từng Item đang mặc
         for (let id of styleIds) {
-            const cleanId = id.split('|')[0]; // Lấy ID chính, bỏ qua màu sắc phụ (nếu có)
+            const cleanId = id.split('|')[0];
             if (!cleanId || cleanId === "") continue;
 
-            const pic = itemTemplateMap[cleanId]; // Tra cứu mã Pic từ Template (VD: cloth587)
+            const pic = itemTemplateMap[cleanId]; 
             if (!pic) continue; 
             
-            // Phân tích thư mục theo tiền tố Pic
             let folder = "";
             if (pic.startsWith("cloth")) folder = "cloth";
             else if (pic.startsWith("face")) folder = "face";
             else if (pic.startsWith("hair")) folder = "hair";
             else if (pic.startsWith("glass")) folder = "glass";
-            else if (pic.startsWith("head")) folder = "head";
             else if (pic.startsWith("eff")) folder = "eff";
-            else if (pic.startsWith("arm")) folder = "arm";
-            else if (pic.startsWith("wing")) folder = "wing";
-            else folder = "default";
+            else continue; 
             
-            if (folder !== "") {
-                if (folder === "hair") {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`);
-                } else if (folder === "cloth") {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/3/show.png`); // Layer tay áo
-                } else {
-                    layers.push(`${baseUrl}/${sexChar}/${folder}/${pic}/1/show.png`);
-                }
+            if (folder === "face") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 3 });
+            else if (folder === "eff") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 4 });
+            else if (folder === "cloth") {
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 5 }); 
+                layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/3/show.png`, zIndex: 8 }); 
             }
+            else if (folder === "hair") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/b/show.png`, zIndex: 6 });
+            else if (folder === "glass") layers.push({ url: `${equipBaseUrl}/${sexChar}/${folder}/${pic}/1/show.png`, zIndex: 7 });
         }
 
-        // ==========================================
-        // Bọc url của ảnh qua con Proxy để bypass Cloudflare
-        // ==========================================
-        let imgTags = layers.map(url => {
-            const proxiedUrl = `${PROXY}${encodeURIComponent(url)}`;
-            return `<img src="${proxiedUrl}" onerror="this.style.display='none'">`;
+        layers.sort((a, b) => a.zIndex - b.zIndex);
+
+        let imgTags = layers.map(layer => {
+            const proxiedUrl = `${PROXY}${encodeURIComponent(layer.url)}`;
+            return `<div class="avatar-layer" style="background-image: url('${proxiedUrl}')"></div>`;
         }).join('');
 
-        return `<div class="avatar-container">${imgTags}</div>`;
+        return `<div class="avatar-container"><div class="avatar-wrapper">${imgTags}</div></div>`;
     }
 
     // 3. Hàm tải trạng thái Server
@@ -223,12 +262,10 @@
                 serverDiv.style.display = "block";
                 serverDiv.innerHTML = `🌐 Máy chủ: ${sName} | 🟢 Đang Online: <span style="color:red; font-size: 22px;">${online}</span> người`;
             }
-        } catch(e) {
-            console.error("Lỗi lấy thông tin server: ", e);
-        }
+        } catch(e) {}
     }
 
-    // 4. Luồng xử lý chính khi bấm nút
+    // 4. Luồng xử lý chính
     async function startCheck() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
@@ -238,37 +275,40 @@
         if(!u || !p) return alert("Vui lòng nhập đủ tài khoản và mật khẩu!");
 
         try {
-            tbody.innerHTML = ""; // Xóa dữ liệu cũ
+            tbody.innerHTML = ""; 
             
-            // Bước 1: Load TemplateAllList.xml nếu chưa load
             if (Object.keys(itemTemplateMap).length === 0) {
                 await loadTemplateAllList();
             }
 
             status.innerText = "🚀 Đang kiểm tra Server...";
-            
-            // Bước 2: Cập nhật thông tin Server Online
             await checkServerStatus();
 
-            status.innerText = "🔑 Đang đăng nhập hệ thống...";
+            status.innerText = "🔑 Đang xác thực tài khoản...";
+            const loginUrl = `${PROXY}${encodeURIComponent("https://launcherlite.gakiemhiep.top/login-launcher-v2.php")}`;
+            await fetch(loginUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `txtusername=${encodeURIComponent(u)}&txtpassword=${encodeURIComponent(p)}&server=1001`
+            });
 
-            // Bước 3: Đăng nhập (Duy cần điều chỉnh API Login tùy theo backend thực tế)
-            const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
+            status.innerText = "🔎 Đang trích xuất dữ liệu nhân vật...";
+            const listUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/LoginSelectList.ashx?username=${encodeURIComponent(u)}&rnd=${Math.random()}`)}`;
+            const listRes = await fetch(listUrl).then(r => r.text());
             
-            // --- GIẢ LẬP ĐĂNG NHẬP (Thay thế bằng code fetch login của bạn) ---
-            const realID = "154"; 
-            const key = "f0adab566981f1306011b1ebab1d9520";
-            // ------------------------------------------------------------------
+            const realIDMatch = listRes.match(/ID="(\d+)"/);
+            if (!realIDMatch) throw new Error("Sai thông tin đăng nhập hoặc tài khoản chưa tạo nhân vật!");
+            
+            const realID = realIDMatch[1]; 
+            const key = "f0adab566981f1306011b1ebab1d9520"; 
 
-            // Bước 4: Tải danh sách bạn bè
             status.innerText = "📡 Đang tải danh sách bạn bè...";
-            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
+            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${encodeURIComponent(u)}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
             
             const response = await fetch(friendsUrl);
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            // Bước 5: Giải nén Zlib
             status.innerText = "📂 Đang giải mã dữ liệu...";
             let decodedXml;
             try {
@@ -279,7 +319,12 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
-            // Bước 6: Parse XML Bạn bè và Render ra bảng
+            // --- BƯỚC KHẮC PHỤC LỖI QUAN TRỌNG NHẤT ---
+            // Tên nhân vật chứa ký tự đặc biệt (VD: &#x2;) sẽ làm DOMParser bị đứng hình.
+            // Xóa sạch tất cả các mã hex thực thể bị lỗi trước khi Parse.
+            decodedXml = decodedXml.replace(/&#[xX]?[0-9a-fA-F]+;/g, '');
+            decodedXml = decodedXml.replace(/[\x00-\x1F\x7F]/g, '');
+
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
@@ -289,8 +334,7 @@
                 return;
             }
 
-            // TỐI ƯU HIỆU SUẤT: Gom toàn bộ HTML vào biến trung gian thay vì + chuỗi vào DOM liên tục
-            let htmlContent = "";
+            let htmlContent = ""; // Tối ưu hiệu suất, gom tất cả html vào đây trước khi in
 
             for (let item of items) {
                 const nick = item.getAttribute("NickName");
@@ -300,7 +344,6 @@
                 const sex = item.getAttribute("Sex");
                 const consortia = item.getAttribute("ConsortiaName") || "Không có";
 
-                // Sinh HTML hình ảnh nhân vật
                 const avatarHtml = renderAvatarHtml(style, sex);
 
                 const row = `<tr>
@@ -318,7 +361,7 @@
                 htmlContent += row;
             }
 
-            // In ra bảng 1 lần duy nhất để chống lag và mất dữ liệu
+            // In một lần duy nhất, chống lag
             tbody.innerHTML = htmlContent;
 
             status.innerText = `✅ Đã quét xong ${items.length} người bạn!`;
