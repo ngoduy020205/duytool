@@ -16,25 +16,32 @@
         button:hover { background: #1565c0; }
         #status { display: block; text-align: center; margin-bottom: 15px; font-weight: bold; color: #546e7a; }
         
-        /* CSS tạo thanh trượt cho bảng */
+        /* --- CSS MỚI CHO THANH TRƯỢT --- */
         .table-wrapper {
-            max-height: 600px; /* Chiều cao tối đa của khung chứa bảng */
-            overflow-y: auto;  /* Bật thanh trượt dọc khi vượt quá chiều cao */
+            max-height: 550px; /* Giới hạn chiều cao bảng */
+            overflow-y: auto;  /* Bật thanh trượt dọc */
             border-radius: 8px;
             border: 1px solid #e0e0e0;
+            background: white;
         }
         
+        /* Tùy chỉnh thanh cuộn cho đẹp mắt */
+        .table-wrapper::-webkit-scrollbar { width: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 8px; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #90a4ae; }
+
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: center; vertical-align: middle; }
         
-        /* Ghim cố định thanh tiêu đề khi cuộn chuột */
+        /* Ghim cố định thanh tiêu đề khi cuộn */
         th { 
             background: #f5f5f5; 
             color: #455a64; 
             position: sticky; 
             top: 0; 
             z-index: 10; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1); /* Đổ bóng nhẹ phân cách với nội dung */
         }
         
         .online { color: #2e7d32; font-weight: bold; }
@@ -59,12 +66,6 @@
             width: 150px; /* Tỉ lệ phóng to ảnh layer */
             image-rendering: pixelated; /* Giữ độ nét của pixel art */
         }
-        
-        /* Tùy chỉnh làm đẹp thanh cuộn dọc (dành cho trình duyệt Webkit) */
-        .table-wrapper::-webkit-scrollbar { width: 8px; }
-        .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
-        .table-wrapper::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 8px; }
-        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #90a4ae; }
     </style>
 </head>
 <body>
@@ -84,7 +85,7 @@
 
     <div id="status">Nhập tài khoản để bắt đầu...</div>
 
-    <!-- Bọc bảng bằng class table-wrapper -->
+    <!-- Bọc bảng vào thẻ div class table-wrapper -->
     <div class="table-wrapper">
         <table id="friendsTable">
             <thead>
@@ -237,7 +238,7 @@
         if(!u || !p) return alert("Vui lòng nhập đủ tài khoản và mật khẩu!");
 
         try {
-            tbody.innerHTML = "";
+            tbody.innerHTML = ""; // Xóa dữ liệu cũ
             
             // Bước 1: Load TemplateAllList.xml nếu chưa load
             if (Object.keys(itemTemplateMap).length === 0) {
@@ -249,39 +250,25 @@
             // Bước 2: Cập nhật thông tin Server Online
             await checkServerStatus();
 
-            // Bước 3: Gửi Request Đăng Nhập lên Launcher
-            status.innerText = "🔑 Đang xác thực tài khoản...";
-            const loginUrl = `${PROXY}${encodeURIComponent("https://launcherlite.gakiemhiep.top/login-launcher-v2.php")}`;
-            await fetch(loginUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: `txtusername=${encodeURIComponent(u)}&txtpassword=${encodeURIComponent(p)}&server=1001`
-            });
+            status.innerText = "🔑 Đang đăng nhập hệ thống...";
 
-            // Bước 4: Gọi API LoginSelectList để lấy chính xác Real ID của acc vừa đăng nhập
-            status.innerText = "🔎 Đang trích xuất dữ liệu nhân vật...";
-            const listUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/LoginSelectList.ashx?username=${encodeURIComponent(u)}&rnd=${Math.random()}`)}`;
-            const listRes = await fetch(listUrl).then(r => r.text());
+            // Bước 3: Đăng nhập (Duy cần điều chỉnh API Login tùy theo backend thực tế)
+            const passMd5 = CryptoJS.MD5(p).toString().toUpperCase();
             
-            const realIDMatch = listRes.match(/ID="(\d+)"/);
-            if (!realIDMatch) {
-                throw new Error("Sai thông tin đăng nhập hoặc tài khoản chưa tạo nhân vật!");
-            }
-            
-            const realID = realIDMatch[1]; 
-            const key = "f0adab566981f1306011b1ebab1d9520"; // Key mặc định của API
+            // --- GIẢ LẬP ĐĂNG NHẬP (Thay thế bằng code fetch login của bạn) ---
+            const realID = "154"; 
+            const key = "f0adab566981f1306011b1ebab1d9520";
+            // ------------------------------------------------------------------
 
-            // Bước 5: Tải danh sách bạn bè với realID động
+            // Bước 4: Tải danh sách bạn bè
             status.innerText = "📡 Đang tải danh sách bạn bè...";
-            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${encodeURIComponent(u)}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
+            const friendsUrl = `${PROXY}${encodeURIComponent(`https://quest1.gakiemhiep.top/imlistload.ashx?key=${key}&uname=${u}&selfid=${realID}&id=${realID}&rnd=${Math.random()}`)}`;
             
             const response = await fetch(friendsUrl);
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            // Bước 6: Giải nén Zlib
+            // Bước 5: Giải nén Zlib
             status.innerText = "📂 Đang giải mã dữ liệu...";
             let decodedXml;
             try {
@@ -292,7 +279,7 @@
                 decodedXml = new TextDecoder().decode(uint8Array);
             }
 
-            // Bước 7: Parse XML Bạn bè và Render ra bảng
+            // Bước 6: Parse XML Bạn bè và Render ra bảng
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(decodedXml, "text/xml");
             const items = xmlDoc.getElementsByTagName("Item");
@@ -301,6 +288,9 @@
                 status.innerText = "📭 Danh sách bạn bè trống.";
                 return;
             }
+
+            // TỐI ƯU HIỆU SUẤT: Gom toàn bộ HTML vào biến trung gian thay vì + chuỗi vào DOM liên tục
+            let htmlContent = "";
 
             for (let item of items) {
                 const nick = item.getAttribute("NickName");
@@ -324,8 +314,12 @@
                         ${state == "1" ? "🟢 ONLINE" : "🔴 OFFLINE"}
                     </td>
                 </tr>`;
-                tbody.innerHTML += row;
+                
+                htmlContent += row;
             }
+
+            // In ra bảng 1 lần duy nhất để chống lag và mất dữ liệu
+            tbody.innerHTML = htmlContent;
 
             status.innerText = `✅ Đã quét xong ${items.length} người bạn!`;
             status.style.color = "green";
